@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>作者頭像 · 眼睛跟隨滑鼠 Demo</title>
+<style>
+  :root{
+    --bg:#f4f5f6;
+    --card-bg:#e9e9ea;
+    --text:#222;
+    --muted:#9a9a9a;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    margin:0;
+    padding: 56px 24px 80px;
+  }
+  h1{
+    text-align:center;
+    font-size:22px;
+    color:var(--text);
+    margin:0 0 8px;
+  }
+  p.sub{
+    text-align:center;
+    color:var(--muted);
+    margin:0 0 44px;
+    font-size:14px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap:20px;
+    max-width:1200px;
+    margin:0 auto;
+  }
+  .author-card{
+    background:var(--card-bg);
+    border-radius:8px;
+    padding:34px 16px 24px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+  }
+  .avatar{
+    width:70.4px;
+    height:70.4px;
+    border-radius:50%;
+    position:relative;
+    overflow:hidden;
+    box-shadow: inset 0 -4px 8px rgba(0,0,0,0.06);
+  }
+
+  /* 一般圓形眼珠 (無眼白) */
+  .eye{
+    position:absolute;
+    width:5.6px;
+    height:5.6px;
+    border-radius:50%;
+    top:28.4px;
+    transition: transform 0.05s ease-out;
+  }
+  .eye.left{ left:38px; }
+  .eye.right{ left:52.4px; }
+
+  /* 護目鏡樣式的眼睛 (新小竹款) */
+  .eye-goggle{
+    position:absolute;
+    top:35.8px;
+    width:6.4px;
+    height:4.4px;
+    border-radius:1.6px;
+    background: rgba(255,255,255,0.15);
+    border: 0.8px solid #6FC2F5;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    overflow:hidden;
+    transition: transform 0.05s ease-out;
+  }
+  .eye-goggle.left{ left:24px; }
+  .eye-goggle.right{ left:40px; }
+  .goggle-lens{
+    width:4.4px;
+    height:4.4px;
+    border-radius:50%;
+    background:#fff;
+    margin-top:-1.6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .goggle-pupil{
+    width:1.6px;
+    height:1.6px;
+    border-radius:50%;
+    background:#173B7A;
+    transition: transform 0.05s ease-out;
+  }
+
+  .name{ font-weight:600; color:var(--text); font-size:14px; }
+  .time{ color:var(--muted); font-size:12px; }
+
+  .note{
+    max-width:640px;
+    margin:56px auto 0;
+    padding:16px 20px;
+    background:#fff8e6;
+    border:1px solid #f0dca0;
+    border-radius:8px;
+    color:#7a6220;
+    font-size:13px;
+    line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<h1>作者</h1>
+<p class="sub">移動滑鼠 / 手指滑動，頭像裡的眼珠會跟著你的游標轉動 👀</p>
+<div class="grid" id="grid"></div>
+
+<div class="note">
+  這個 demo 目前使用跟原始 wireframe 一樣的色塊佔位頭像，但已改成「無眼白、只有不同顏色眼珠」的樣式（含新小竹款的護目鏡眼睛）。<br>
+  如果要換成你 Downloads 資料夾裡的真實頭像圖片，請在 Claude 桌面版把該資料夾加入連線（或直接把圖片拖進對話），我再幫你把眼睛動畫套用到實際圖片上。
+</div>
+
+<script>
+  // 5 種頭像樣式：背景色 + 眼珠樣式
+  const avatarTypes = [
+    { bg:'#5EB8F6', kind:'dot',    pupil:'#1a1a1a' }, // 王小明：藍底黑眼珠
+    { bg:'#D6D6D6', kind:'dot',    pupil:'#1a1a1a' }, // 李小龍：灰底黑眼珠
+    { bg:'#0B7FFF', kind:'dot',    pupil:'#ffffff' }, // 新小竹(藍款)：藍底白眼珠
+    { bg:'#2951C4', kind:'goggle', pupil:'#173B7A' }, // 新小竹(護目鏡款)：深藍底護目鏡眼睛
+    { bg:'#EFACAC', kind:'dot',    pupil:'#E12020' }, // 專小屬：粉底紅眼珠
+  ];
+
+  const names = ['王小明','李小龍','新小竹','專小屬','新小竹',
+                 '專小屬','李小龍','王小明','李小龍','新小竹',
+                 '王小明','專小屬','新小竹','李小龍','王小明'];
+  const times = ['1分鐘前','2分鐘前','2分鐘前','2分鐘前','2分鐘前',
+                 '4小時前','4小時前','4小時前','4小時前','4小時前',
+                 '4小時前','4小時前','4小時前','4小時前','4小時前'];
+
+  const grid = document.getElementById('grid');
+
+  names.forEach((name, i) => {
+    const type = avatarTypes[i % avatarTypes.length];
+    const card = document.createElement('div');
+    card.className = 'author-card';
+
+    let eyesHtml = '';
+    if (type.kind === 'dot') {
+      eyesHtml = `
+        <div class="eye left"  style="background:${type.pupil}"></div>
+        <div class="eye right" style="background:${type.pupil}"></div>
+      `;
+    } else {
+      eyesHtml = `
+        <div class="eye-goggle left"><div class="goggle-lens"><div class="goggle-pupil" style="background:${type.pupil}"></div></div></div>
+        <div class="eye-goggle right"><div class="goggle-lens"><div class="goggle-pupil" style="background:${type.pupil}"></div></div></div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="avatar" style="background:${type.bg}">
+        ${eyesHtml}
+      </div>
+      <div class="name">${name}</div>
+      <div class="time">${times[i]}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  const maxOffset = 16; // 眼珠可移動的最大距離 (px)，讓眼睛能明顯移到頭像偏上/偏下/偏側邊
+
+  function updateEyes(clientX, clientY) {
+    // 圓點眼珠、護目鏡（整組一起移動）都用同一套邏輯，讓移動幅度一致
+    document.querySelectorAll('.eye, .eye-goggle').forEach(el => {
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const offX = (dx / dist) * Math.min(maxOffset, dist / 6);
+      const offY = (dy / dist) * Math.min(maxOffset, dist / 6);
+      el.style.transform = `translate(${offX}px, ${offY}px)`;
+    });
+  }
+
+  function setEyesOffsetY(offsetY) {
+    document.querySelectorAll('.eye, .eye-goggle').forEach(el => {
+      el.style.transform = `translate(0px, ${offsetY}px)`;
+    });
+  }
+
+  // 判斷是否為「觸控為主、沒有滑鼠 hover」的裝置（手機/平板）
+  const isTouchPrimary = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+  if (!isTouchPrimary) {
+    // 電腦版：維持滑鼠位置追蹤，不變
+    window.addEventListener('mousemove', (e) => updateEyes(e.clientX, e.clientY));
+  } else {
+    // 手機版：沒有游標可以追蹤，改成用「捲動方向」決定眼睛看上還是看下
+    // 頁面往下捲動（滑動內容往上跑）→ 眼睛看下；往上捲動 → 眼睛看上
+    let lastScrollY = window.scrollY;
+    let resetTimer = null;
+
+    window.addEventListener('scroll', () => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY;
+      lastScrollY = currentY;
+
+      if (Math.abs(delta) > 0.5) {
+        const dir = delta > 0 ? 1 : -1; // 1 = 向下看, -1 = 向上看
+        const magnitude = Math.min(maxOffset, 8 + Math.abs(delta) * 1.2);
+        setEyesOffsetY(dir * magnitude);
+      }
+
+      // 停止捲動一小段時間後，眼睛慢慢回正
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => setEyesOffsetY(0), 250);
+    }, { passive: true });
+  }
+</script>
+</body>
+</html>
