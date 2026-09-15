@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PTS Live 正發生 — Sticky Demo</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:#dcdcdc; }
+  .page {
+    width:1470px;
+    max-width:100%;
+    margin:0 auto;
+    position:relative;
+    background:#f5f5f5;
+  }
+  .sticky {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    display: block;
+  }
+  .sticky > img { width:100%; display:block; }
+  .sticky1 { z-index: 0; }
+  .sticky2 { z-index: 10; }
+  /*
+    sticky3 is a long news list (taller than any viewport), not a single
+    hero screen like sticky1/sticky2. It only needs to slide up and cover
+    sticky2 once, then scroll normally so all 6 items are readable — it is
+    NOT meant to stay pinned for its whole height. Giving it position:sticky
+    like the others leaves too little room in .page below it (there's only
+    the footer's height of "runway"), which makes the browser clamp it and
+    yanks the footer up over the last news item early. A plain positioned
+    block (position:relative, not sticky) still gets a z-index of 20 so it
+    still paints over the pinned sticky2 underneath, without that clamping.
+  */
+  .sticky3 {
+    position: relative;
+    z-index: 20;
+    width: 100%;
+    display: block;
+    background: #f5f5f5;
+  }
+  .sticky3 > img { width:100%; display:block; }
+  .footer {
+    position: relative;
+    z-index: 20;
+    width: 100%;
+    display: block;
+  }
+  .footer img { width:100%; display:block; }
+
+  .photo-swap {
+    position: absolute;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .photo-swap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0;
+    transition: opacity .25s ease;
+  }
+  .photo-swap.active img { opacity: 1; }
+
+  .hover-zone {
+    position: absolute;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background .15s ease;
+  }
+  .hover-zone:hover {
+    background: rgba(0,0,0,0.05);
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <section class="sticky sticky1"><img src="image/sticky1.png" alt=""></section>
+  <section class="sticky sticky2"><img src="image/sticky2.png" alt=""></section>
+  <section class="sticky3" id="sticky3">
+    <img src="image/sticky3.png" alt="" style="width:100%;display:block;">
+  </section>
+  <footer class="footer"><img src="image/footer.png" alt=""></footer>
+</div>
+
+<script>
+const ZONES = [{"block": 1, "photo_box": [435, 128, 1034, 528], "item_zones": [[126, 176], [193, 268], [285, 336]]}, {"block": 2, "photo_box": [435, 656, 1034, 1056], "item_zones": [[654, 704], [721, 796], [813, 864]]}, {"block": 3, "photo_box": [435, 1184, 1034, 1584], "item_zones": [[1182, 1232], [1249, 1300], [1317, 1368]]}, {"block": 4, "photo_box": [435, 1712, 1034, 2112], "item_zones": [[1710, 1784], [1801, 1876], [1893, 1944]]}, {"block": 5, "photo_box": [435, 2240, 1034, 2640], "item_zones": [[2238, 2288], [2305, 2356], [2373, 2424]]}, {"block": 6, "photo_box": [435, 2768, 1034, 3168], "item_zones": [[2766, 2816], [2833, 2908], [2925, 2976]]}];
+const MEDIA_FILES = ["01JT032AH14PP9X6VGG7W438H2.jpg", "01K7SBTQV7Y0P45ASDEWN92PG0.jpeg", "01K7VZT1DVREP2GQCGH7XM5NPC.jpeg", "01KSMRWQ100HC8KEAZS41Z8GXX-thumb.jpg", "01KTTCZY2AD1FQW25E6MD7Z8K2-thumb.jpg", "01KTTFW44RQ3DV519B7Q6RD5SG-thumb.jpg", "01KW4WEYR1J0EMZDMBSCTPMD34.jpg", "01KWJNT4XTXA7TYG48NYYMJBEW-thumb.jpg", "01KX5971NVDYTGYV4X3XKZGWAH-webp.webp", "01KXA3BCZCK2KF4SSNPJ4SSKW5-webp.webp", "01KXB11J3BB03ZK6ATWX843FAT-thumb.jpg", "01KXB1ZYT278RKTNFG3R2CRE03-thumb.jpg", "01KXCCXNNA4RMCCPVQE69VWV05-thumb.jpg", "01KXCD2QXC74DZT13JBD91EF7Q-thumb.jpg", "01KYS6C3YFKPY7B8BFCSGNFB9K.jpg", "01KZ08FXJGNBX87NQER575HKY9.jpg", "01KZDK7HJ1XQQA7945WMCNJ6MG-webp.webp", "01KZQYEAHV92XDZBANBFQQR388-thumb.jpg", "01KZTNK5KX3M8C7M6DTA3KX717-webp.webp", "01KZZ1RW1HPQH3J9JDFHN2F3XF-thumb.jpg", "01KZZ1RW1HPQH3J9JDFHN2F3XF.jpg", "01M055PJGTNV2JE70TF4K4VWMP-thumb.jpg", "01M06HY5D4RKFBWXVT69YSQ4SN-thumb.jpg", "01M07TVMQ2F3Z70V0BWT2X74EP-thumb.jpg", "01M07V8BA89N8WEWJ1VRV7MQKS-thumb.jpg", "01M09DJX74MFNXKPP0Q8R5F3DA.jpg", "01M09NNXH1A3HQ29F41Y3NV6SZ-thumb.jpg", "01M09NTW2AY7M0NEGC25STZAJV-thumb.jpg", "01M09RJ0QJM6D2YVWXK7DCA36K-thumb.jpg", "01M09RRM98JTV58ZJVGF23VDBJ-thumb.jpg", "01M09RZFR6B7RA1HCFGZ3KXV53-thumb.jpg", "01M09SGR6G8C1WPTZZVWSKS5S7-thumb.jpg", "01M09TGB9ACKZJF1M1Z8R97T22-thumb.jpg", "01M0ADYN4GR5YJ0GV2EC0SMEWQ-webp.webp", "323.png", "cover (1).jpg", "cover (2).jpg", "cover (4).jpg", "cover-thumb (1).jpg", "cover-thumb (10).jpg", "cover-thumb (11).jpg", "cover-thumb (12).jpg", "cover-thumb (13).jpg", "cover-thumb (2).jpg", "cover-thumb (3).jpg", "cover-thumb (4).jpg", "cover-thumb (5).jpg", "cover-thumb (6).jpg", "cover-thumb (7).jpg", "cover-thumb (8).jpg", "cover-thumb (9).jpg", "cover-thumb.jpg", "cover-webp (2).webp", "cover-webp (3).webp", "cover-webp (4).webp", "cover-webp.webp", "cover.jpg", "hqdefault (1).jpg", "hqdefault.jpg", "media (3).png", "media.png", "media2.png", "Rectangle 2422.png", "Rectangle 2428 (1).png", "Rectangle 2428 (3).png", "Rectangle 2428 (5).png"];
+const MEDIA_PATH = "../../../MEDIA/";
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const sticky3 = document.getElementById('sticky3');
+
+ZONES.forEach(block => {
+  const [x0, y0, x1, y1] = block.photo_box;
+
+  const swap = document.createElement('div');
+  swap.className = 'photo-swap';
+  swap.style.left = x0 + 'px';
+  swap.style.top = y0 + 'px';
+  swap.style.width = (x1 - x0) + 'px';
+  swap.style.height = (y1 - y0) + 'px';
+
+  const img = document.createElement('img');
+  swap.appendChild(img);
+  sticky3.appendChild(swap);
+
+  const picks = shuffle(MEDIA_FILES).slice(0, block.item_zones.length);
+
+  block.item_zones.forEach((z, idx) => {
+    const zone = document.createElement('div');
+    zone.className = 'hover-zone';
+    zone.style.left = '1040px';
+    zone.style.top = z[0] + 'px';
+    zone.style.width = '420px';
+    zone.style.height = (z[1] - z[0]) + 'px';
+
+    zone.addEventListener('mouseenter', () => {
+      img.src = MEDIA_PATH + encodeURIComponent(picks[idx]);
+      swap.classList.add('active');
+    });
+    zone.addEventListener('mouseleave', () => {
+      swap.classList.remove('active');
+    });
+
+    sticky3.appendChild(zone);
+  });
+});
+</script>
+
+</body>
+</html>
